@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record model="ir.ui.view" id="view_backup_conf_form_inherit">
+        <field name="name">view_backup_conf_form_inherit</field>
+        <field name="model">db.backup</field>
+        <field name="inherit_id" ref="auto_backup.view_backup_conf_form"/>
+        <field name="arch" type="xml">
+            <field name="method" position="after">
+                <field name="drive_folder_id"
+                    attrs="{
+                        'invisible': [('method','!=','gg_drive')],
+                        'required': [('method','=','gg_drive')]
+                    }"/>
+            </field>
+        </field>
+    </record>
+</odoo>

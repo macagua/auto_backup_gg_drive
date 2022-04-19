@@ -45,6 +45,12 @@ class DbBackup(models.Model):
         self.action_backup_gg_drive()
 
     def action_backup_gg_drive(self):
+        gg_drive_env = self.env['google.drive.config']
+        access_token = GoogleDrive.get_access_token(gg_drive_env)
+        self._action_backup_gg_drive(access_token)
+        self._action_remove_backup_gg_drive(access_token)
+
+    def _action_backup_gg_drive(self, access_token):
         backup = None
         # Backup and upload to GG Drive
         gg_drive = self.filtered(lambda r: r.method == "gg_drive")
@@ -71,8 +77,6 @@ class DbBackup(models.Model):
                             )
                             backup = backup or destiny.name
                         if backup:
-                            gg_drive_env = self.env['google.drive.config']
-                            access_token = GoogleDrive.get_access_token(gg_drive_env)
                             # GOOGLE DRIVE UPLOAD
                             headers = {"Authorization": "Bearer %s" % (access_token)}
                             params = {
@@ -93,26 +97,37 @@ class DbBackup(models.Model):
                             except Exception as error:
                                 _logger.exception(_('Database upload to Google drive error %s' % error))
 
+    def _action_remove_backup_gg_drive(self, access_token):
+        gg_drive = self.filtered(lambda r: r.method == "gg_drive")
+        if gg_drive:
+            for rec in gg_drive:
+                if rec.days_to_keep > 0:
+                    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+                    params = {
+                        'access_token': access_token,
+                        'q': "mimeType='application/%s'" % (rec.backup_format),
+                        'fields': "nextPageToken,files(id,name, createdTime, modifiedTime, mimeType)"
+                    }
+                    uri = "/drive/v3/files"
+                    try:
+                        dummy, response, dummy = self.env['google.service']._do_request(
+                            uri, params=params, headers=headers, method='GET')
+                    except requests.HTTPError as error:
+                        _logger.exception(_('google_service error %s' % error))
 
-                    # TODO: AUTO REMOVE UPLOADED FILE
-                    # headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-                    # params = {
-                    #     'access_token': access_token,
-                    #     'q': "mimeType='application/%s'" % (rec.backup_type),
-                    #     # 'q': "mimeType='application/zip'",
-                    #     'fields': "nextPageToken,files(id,name, createdTime, modifiedTime, mimeType)"
-                    # }
-                    # url = "/drive/v3/files"
-                    # status, content, ask_time = self.env['google.service']._do_request(url, params, headers, type='GET')
+                    for item in response['files']:
+                        date_today = datetime.today().date()
+                        create_date = datetime.strptime(str(item['createdTime'])[0:10], '%Y-%m-%d').date()
 
-                    # for item in content['files']:
-                    #     date_today = datetime.datetime.today().date()
-                    #     create_date = datetime.datetime.strptime(str(item['createdTime'])[0:10], '%Y-%m-%d').date()
-
-                    #     delta = date_today - create_date
-                    #     if delta.days >= rec.drive_to_remove:
-                    #         params = {
-                    #             'access_token': access_token
-                    #         }
-                    #         url = "/drive/v3/files/%s" % (item['id'])
-                    #         response = self.env['google.service']._do_request(url, params, headers, type='DELETE')
+                        delta = date_today - create_date
+                        if delta.days >= rec.days_to_keep:
+                            params = {
+                                'access_token': access_token
+                            }
+                            uri = "/drive/v3/files/%s" % (item['id'])
+                            try:
+                                del_response = self.env['google.service']._do_request(
+                                    uri, params=params, headers=headers, method='DELETE')
+                                _logger.info(_('Delete file from Google drive success %s' % response))
+                            except requests.HTTPError as error:
+                                _logger.exception(_('delete google_service error %s' % error))

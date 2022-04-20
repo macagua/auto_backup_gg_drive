@@ -52,82 +52,85 @@ class DbBackup(models.Model):
 
     def _action_backup_gg_drive(self, access_token):
         backup = None
+        successful = self.browse()
         # Backup and upload to GG Drive
         gg_drive = self.filtered(lambda r: r.method == "gg_drive")
-        if gg_drive:
-            for rec in gg_drive:
-                filename = self.filename(datetime.now(), ext=rec.backup_format)
-                file_path = os.path.join(rec.folder, filename)
-                with rec.backup_log():
-                    # Directory must exist
-                    try:
-                        os.makedirs(rec.folder)
-                    except OSError as exc:
-                        _logger.exception("Action backup - OSError: %s" % exc)
+        for rec in gg_drive:
+            dbname = self.env.cr.dbname
+            filename = '%s_%s' % (dbname, self.filename(datetime.now(), ext=rec.backup_format))
+            file_path = os.path.join(rec.folder, filename)
+            with rec.backup_log():
+                # Directory must exist
+                try:
+                    os.makedirs(rec.folder, exist_ok=True)
+                except OSError as exc:
+                    _logger.exception("Action backup - OSError: %s" % exc)
 
-                    with open(file_path, "wb") as destiny:
-                        # Copy the cached backup
-                        if backup:
-                            with open(backup) as cached:
-                                shutil.copyfileobj(cached, destiny)
-                        # Generate new backup
-                        else:
-                            db.dump_db(
-                                self.env.cr.dbname, destiny, backup_format=rec.backup_format
+                with open(file_path, "wb") as destiny:
+                    # Copy the cached backup
+                    if backup:
+                        with open(backup) as cached:
+                            shutil.copyfileobj(cached, destiny)
+                    # Generate new backup
+                    else:
+                        db.dump_db(
+                            self.env.cr.dbname, destiny, backup_format=rec.backup_format
+                        )
+                        backup = backup or destiny.name
+                    if backup:
+                        # GOOGLE DRIVE UPLOAD
+                        headers = {"Authorization": "Bearer %s" % (access_token)}
+                        params = {
+                            "name": "%s" % (str(filename)),
+                            "parents": ["%s" % (str(rec.drive_folder_id))]
+                        }
+                        files = {
+                            'data': ('metadata', json.dumps(params), 'application/json; charset=UTF-8'),
+                            'file': open("%s" % (str(file_path)), "rb")
+                        }
+                        try:
+                            response = requests.post(
+                                "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+                                headers=headers,
+                                files=files
                             )
-                            backup = backup or destiny.name
-                        if backup:
-                            # GOOGLE DRIVE UPLOAD
-                            headers = {"Authorization": "Bearer %s" % (access_token)}
-                            params = {
-                                "name": "%s" % (str(filename)),
-                                "parents": ["%s" % (str(rec.drive_folder_id))]
-                            }
-                            files = {
-                                'data': ('metadata', json.dumps(params), 'application/json; charset=UTF-8'),
-                                'file': open("%s" % (str(file_path)), "rb")
-                            }
-                            try:
-                                response = requests.post(
-                                    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
-                                    headers=headers,
-                                    files=files
-                                )
-                                _logger.info(_('Database upload to Google drive success %s' % response))
-                            except Exception as error:
-                                _logger.exception(_('Database upload to Google drive error %s' % error))
+                            _logger.info(_('Database upload to Google drive success %s' % response))
+                        except Exception as error:
+                            _logger.exception(_('Database upload to Google drive error %s' % error))
+                        successful |= rec
+        successful.cleanup()
 
     def _action_remove_backup_gg_drive(self, access_token):
         gg_drive = self.filtered(lambda r: r.method == "gg_drive")
-        if gg_drive:
-            for rec in gg_drive:
-                if rec.days_to_keep > 0:
-                    headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-                    params = {
-                        'access_token': access_token,
-                        'q': "mimeType='application/%s'" % (rec.backup_format),
-                        'fields': "nextPageToken,files(id,name, createdTime, modifiedTime, mimeType)"
-                    }
-                    uri = "/drive/v3/files"
-                    try:
-                        dummy, response, dummy = self.env['google.service']._do_request(
-                            uri, params=params, headers=headers, method='GET')
-                    except requests.HTTPError as error:
-                        _logger.exception(_('google_service error %s' % error))
+        for rec in gg_drive:
+            if rec.days_to_keep > 0:
+                headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+                params = {
+                    'access_token': access_token,
+                    'q': "mimeType='application/%s'" % (rec.backup_format),
+                    'fields': "nextPageToken,files(id,name, createdTime, modifiedTime, mimeType)"
+                }
+                uri = "/drive/v3/files"
+                try:
+                    status, data, time = self.env['google.service']._do_request(
+                        uri, params=params, headers=headers, method='GET')
+                    _logger.info('_do_request for %s' % uri)
+                except requests.HTTPError as error:
+                    _logger.exception(_('google_service error %s' % error))
 
-                    for item in response['files']:
-                        date_today = datetime.today().date()
-                        create_date = datetime.strptime(str(item['createdTime'])[0:10], '%Y-%m-%d').date()
+                for item in data['files']:
+                    date_today = datetime.today().date()
+                    create_date = datetime.strptime(str(item['createdTime'])[0:10], '%Y-%m-%d').date()
 
-                        delta = date_today - create_date
-                        if delta.days >= rec.days_to_keep:
-                            params = {
-                                'access_token': access_token
-                            }
-                            uri = "/drive/v3/files/%s" % (item['id'])
-                            try:
-                                del_response = self.env['google.service']._do_request(
-                                    uri, params=params, headers=headers, method='DELETE')
-                                _logger.info(_('Delete file from Google drive success %s' % response))
-                            except requests.HTTPError as error:
-                                _logger.exception(_('delete google_service error %s' % error))
+                    delta = date_today - create_date
+                    if delta.days >= rec.days_to_keep:
+                        params = {
+                            'access_token': access_token
+                        }
+                        uri = "/drive/v3/files/%s" % (item['id'])
+                        try:
+                            status, data, time = self.env['google.service']._do_request(
+                                uri, params=params, headers=headers, method='DELETE')
+                            _logger.info(_('Delete file from Google drive success %s' % data))
+                        except requests.HTTPError as error:
+                            _logger.exception(_('delete google_service error %s' % error))

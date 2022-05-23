@@ -2,7 +2,7 @@
 
 Odoo Auto Backup Google Drive
 
-- Depend on module [auto_backup](https://github.com/anhvu-sg/server-tools/tree/13.0/auto_backup) version 13.0
+- Depend on module [auto_backup](https://github.com/OCA/server-tools/tree/13.0/auto_backup) version 13.0
 
 
 ## Languages

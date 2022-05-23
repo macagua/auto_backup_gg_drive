@@ -1,0 +1,88 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# * auto_backup_gg_drive
+# Leonardo J. Caballero G. <leonardocaballero@gmail.com>, 2022.
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 13.0-20220420\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-05-22 17:46+0000\n"
+"PO-Revision-Date: 2022-05-22 14:05-0400\n"
+"Last-Translator: Leonardo J. Caballero G. <leonardocaballero@gmail.com>\n"
+"Language-Team: ES <LL@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Virtaal 0.7.1\n"
+
+#. module: auto_backup_gg_drive
+#: model:ir.model.fields,help:auto_backup_gg_drive.field_db_backup__method
+msgid "Choose the storage method for this backup."
+msgstr "Elija el método de almacenamiento para esta copia de seguridad."
+
+#. module: auto_backup_gg_drive
+#: model:ir.model.fields,help:auto_backup_gg_drive.field_db_backup__drive_folder_id
+msgid ""
+"Create a folder on drive in which you want to upload files; get the "
+"drive_folder_id from URL"
+msgstr ""
+"Cree una carpeta en la unidad en la que desee cargar archivos; obtener el "
+"drive_folder_id de la URL"
+
+#. module: auto_backup_gg_drive
+#: model:ir.model,name:auto_backup_gg_drive.model_db_backup
+msgid "Database Backup"
+msgstr "Copia de seguridad de la base de datos"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "Database upload to Google drive error %s"
+msgstr "Error de carga de la base de datos en Google Drive %s"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "Database upload to Google drive success %s"
+msgstr "La carga de la base de datos en Google Drive fue éxitosa %s"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "Delete file from Google drive success %s"
+msgstr "Eliminado el archivo de Google Drive con éxito %s"
+
+#. module: auto_backup_gg_drive
+#: model:ir.model.fields,field_description:auto_backup_gg_drive.field_db_backup__drive_folder_id
+msgid "Drive Folder ID"
+msgstr "ID de carpeta de Google Drive"
+
+#. module: auto_backup_gg_drive
+#: model:ir.model.fields.selection,name:auto_backup_gg_drive.selection__db_backup__method__gg_drive
+msgid "Google drive"
+msgstr "Google Drive"
+
+#. module: auto_backup_gg_drive
+#: model:ir.model.fields,field_description:auto_backup_gg_drive.field_db_backup__method
+msgid "Method"
+msgstr "Método"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "Please input Google drive access_token"
+msgstr "Por favor, ingrese el access_token de Google Drive"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "delete google_service error %s"
+msgstr "eliminar el error google_service %s"
+
+#. module: auto_backup_gg_drive
+#: code:addons/auto_backup_gg_drive/models/db_backup.py:0
+#, python-format
+msgid "google_service error %s"
+msgstr "error google_service %s"
